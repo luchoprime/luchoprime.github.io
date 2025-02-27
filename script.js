@@ -49,7 +49,7 @@ const audioIncompleto = document.getElementById("incompleto");
 const audioCeropuntos = document.getElementById("ceropuntos");
 const audioAviso = document.getElementById("aviso");
 
-// Función para detener todos los sonidos para evitar solapamientos
+// Función para detener todos los sonidos (evita solapamientos)
 function stopAllAudio() {
   audioFondo.pause();
   audioInicio.pause();
@@ -69,8 +69,8 @@ function formatTime(seconds) {
 // Función para actualizar el temporizador
 function updateTimer() {
   timerDiv.textContent = `Tiempo restante: ${formatTime(timeLeft)}`;
-  // Se activa el aviso a 30 segundos en lugar de 60
   if (timeLeft === 30 && !avisoReproducido) {
+    // Ahora se activa el aviso a 30 segundos del final
     stopAllAudio();
     audioAviso.play();
     avisoReproducido = true;
@@ -96,7 +96,6 @@ function endGameDueToTime() {
   document.querySelectorAll(".dropzone").forEach((zone, index) => {
     if (zone.firstChild) {
       const card = zone.firstChild;
-      // Eliminar clase 'selected' si estuviera
       card.classList.remove("selected");
       if (parseInt(card.dataset.id) === correctOrder[index]) {
         card.classList.add("correct"); // Sombra verde para acertadas
@@ -132,7 +131,7 @@ function shuffle(array) {
 }
 
 // Función para inicializar o reiniciar el juego
-// El parámetro showBanner indica si se debe mostrar el banner (true al reiniciar) o no (false al comenzar)
+// El parámetro showBanner indica si se muestra el banner (true al reiniciar) o no (false al comenzar)
 function initializeGame(showBanner = true) {
   attemptCount = 0;
   score = 0;
@@ -149,7 +148,7 @@ function initializeGame(showBanner = true) {
   restartButton.style.display = "none";
   detailPanel.style.display = "none";
   
-  // Actualizar mensaje de instrucciones a estado inicial
+  // Actualizar mensaje de instrucciones
   document.querySelector(".instruction").textContent = "Bienvenido a Línea de Tiempo de las Matemáticas, aprende jugando y adivinando el orden de los acontecimientos.";
   
   // Mostrar u ocultar el banner según el parámetro
@@ -167,9 +166,9 @@ function initializeGame(showBanner = true) {
   });
   
   // Limpiar contenedor de cartas e insertar mensaje de inicio
-  cardsContainer.innerHTML = '<p class="hint">Arrastra las cartas de aquí a la línea de tiempo. Al seleccionar una carta, podrás ver una descripción del evento.</p>';
+  cardsContainer.innerHTML = '<p class="hint">Arrastra las cartas de aquí a la línea de tiempo. Al seleccionar una carta, verás la descripción del evento.</p>';
   
-  // Crear las cartas (agregando la descripción en dataset)
+  // Crear las cartas (con descripción en dataset)
   const shuffledCards = shuffle(selectedEvents.slice());
   shuffledCards.forEach(event => {
     const card = document.createElement("div");
@@ -197,9 +196,13 @@ function initializeGame(showBanner = true) {
     card.appendChild(dateP);
     
     card.addEventListener("dragstart", dragStart);
-    // Al hacer click, agregar clase 'selected' y mostrar el detalle (solo descripción)
+    // Agregar eventos táctiles para dispositivos móviles
+    card.addEventListener("touchstart", handleTouchStart, {passive: false});
+    card.addEventListener("touchmove", handleTouchMove, {passive: false});
+    card.addEventListener("touchend", handleTouchEnd);
+    // Al hacer click, agregar clase 'selected' (sombra naranja) y mostrar detalle (solo descripción)
     card.addEventListener("click", () => {
-      // Remover la clase "selected" de todas las cartas
+      // Remover 'selected' de todas las cartas
       document.querySelectorAll(".card").forEach(c => c.classList.remove("selected"));
       card.classList.add("selected");
       showDetail(card);
@@ -216,23 +219,66 @@ function showDetail(card) {
   detailPanel.style.display = "block";
 }
 
-// Función para iniciar el arrastre
+// Función para iniciar el arrastre (drag)
 function dragStart(e) {
   e.dataTransfer.setData("text/plain", e.target.closest(".card").dataset.id);
 }
 
-// Función para permitir el arrastre sobre una zona
+// Funciones para soporte táctil (touch events)
+function handleTouchStart(e) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const rect = e.target.getBoundingClientRect();
+  e.target.dataset.offsetX = touch.clientX - rect.left;
+  e.target.dataset.offsetY = touch.clientY - rect.top;
+  e.target.style.position = "absolute";
+  e.target.style.zIndex = "1000";
+}
+
+function handleTouchMove(e) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const offsetX = parseFloat(e.target.dataset.offsetX);
+  const offsetY = parseFloat(e.target.dataset.offsetY);
+  e.target.style.left = (touch.clientX - offsetX) + "px";
+  e.target.style.top = (touch.clientY - offsetY) + "px";
+}
+
+function handleTouchEnd(e) {
+  e.preventDefault();
+  const card = e.target;
+  const rect = card.getBoundingClientRect();
+  const centerX = rect.left + rect.width / 2;
+  const centerY = rect.top + rect.height / 2;
+  let dropped = false;
+  document.querySelectorAll(".dropzone").forEach(zone => {
+    const zoneRect = zone.getBoundingClientRect();
+    if (centerX >= zoneRect.left && centerX <= zoneRect.right &&
+        centerY >= zoneRect.top && centerY <= zoneRect.bottom) {
+      zone.appendChild(card);
+      dropped = true;
+    }
+  });
+  if (!dropped) {
+    cardsContainer.appendChild(card);
+  }
+  card.style.position = "";
+  card.style.left = "";
+  card.style.top = "";
+  card.style.zIndex = "";
+}
+
+// Funciones para permitir el arrastre sobre una zona (drag over/leave)
 function dragOver(e) {
   e.preventDefault();
   e.currentTarget.classList.add("over");
 }
 
-// Función para quitar la clase visual al salir de una zona
 function dragLeave(e) {
   e.currentTarget.classList.remove("over");
 }
 
-// Función para soltar la carta en una dropzone
+// Función para soltar la carta en una dropzone (drag drop)
 function dropCard(e) {
   e.preventDefault();
   e.currentTarget.classList.remove("over");
@@ -246,7 +292,7 @@ function dropCard(e) {
   }
 }
 
-// Función para soltar la carta en el contenedor (para reubicarla)
+// Función para soltar la carta en el contenedor (drag drop)
 function dropToContainer(e) {
   e.preventDefault();
   e.currentTarget.classList.remove("over");
@@ -276,8 +322,7 @@ checkButton.addEventListener("click", () => {
   document.querySelectorAll(".dropzone").forEach((zone, index) => {
     if (zone.firstChild) {
       const card = zone.firstChild;
-      // Remover la clase 'selected' en caso de que se haya dejado
-      card.classList.remove("selected");
+      card.classList.remove("selected"); // Remover sombra naranja de selección
       if (parseInt(card.dataset.id) === correctOrder[index]) {
         card.classList.add("correct"); // Sombra verde para acertadas
         const dateP = card.querySelector(".date");
