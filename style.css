@@ -47,17 +47,17 @@ h2 {
 /* Contenedor de cartas */
 #cards-container {
   margin: 20px auto;
-  width: 80%;
-  min-height: 150px;
+  width: 90%;  /* Aprovecha más el ancho */
   border: 2px dashed #2980b9;
   background-color: #ecf0f1;
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
-  justify-content: center;
+  flex-wrap: nowrap; /* Todas en una fila */
+  justify-content: space-evenly; /* Distribución uniforme */
   align-items: center;
   padding: 10px;
   border-radius: 10px;
+  overflow-x: auto; /* Scroll horizontal si es necesario */
 }
 
 /* Mensaje en el contenedor de cartas */
@@ -87,9 +87,9 @@ h2 {
 .card:active {
   transform: scale(1.05);
 }
-/* Sombra naranja para carta seleccionada */
+/* Sombra azul para carta seleccionada */
 .card.selected {
-  box-shadow: 0 0 10px 3px rgba(255,165,0,0.8);
+  box-shadow: 0 0 10px 3px rgba(0, 123, 255, 0.8);
 }
 /* Sombra verde para carta correcta */
 .card.correct {

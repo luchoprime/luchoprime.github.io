@@ -49,7 +49,7 @@ const audioIncompleto = document.getElementById("incompleto");
 const audioCeropuntos = document.getElementById("ceropuntos");
 const audioAviso = document.getElementById("aviso");
 
-// Función para detener todos los sonidos (evita solapamientos)
+// Función para detener todos los sonidos para evitar solapamientos
 function stopAllAudio() {
   audioFondo.pause();
   audioInicio.pause();
@@ -70,7 +70,6 @@ function formatTime(seconds) {
 function updateTimer() {
   timerDiv.textContent = `Tiempo restante: ${formatTime(timeLeft)}`;
   if (timeLeft === 30 && !avisoReproducido) {
-    // Ahora se activa el aviso a 30 segundos del final
     stopAllAudio();
     audioAviso.play();
     avisoReproducido = true;
@@ -105,7 +104,20 @@ function endGameDueToTime() {
       }
     }
   });
-  score = correctCount;
+  
+  // Calcular el puntaje según correctCount
+  if (correctCount >= 6) {
+    score = 5;
+  } else if (correctCount >= 4) {
+    score = 3;
+  } else if (correctCount === 3) {
+    score = 2;
+  } else if (correctCount >= 1) {
+    score = 1;
+  } else {
+    score = 0;
+  }
+  
   timerDiv.style.display = "none";
   checkButton.style.display = "none";
   if (score === 5) {
@@ -115,7 +127,8 @@ function endGameDueToTime() {
     resultDiv.textContent = `¡Tiempo agotado! No lograste ninguna carta correcta. Puntaje: ${score} - ¡Mucho ánimo, prepárate para la próxima ocasión!`;
     audioCeropuntos.play();
   } else {
-    resultDiv.textContent = `¡Tiempo agotado! Tienes ${score} cartas correctas. Puntaje: ${score} - ¡Sigue esforzándote!`;
+    const puntosTexto = score === 1 ? "punto" : "puntos";
+    resultDiv.textContent = `¡Tiempo agotado! Tienes ${score} ${puntosTexto}. Puntaje: ${score} - ¡Sigue esforzándote!`;
     audioIncompleto.play();
   }
   restartButton.style.display = "inline-block";
@@ -148,14 +161,14 @@ function initializeGame(showBanner = true) {
   restartButton.style.display = "none";
   detailPanel.style.display = "none";
   
-  // Actualizar mensaje de instrucciones
-  document.querySelector(".instruction").textContent = "Bienvenido a Línea de Tiempo de las Matemáticas, aprende jugando y adivinando el orden de los acontecimientos.";
+  // En esta inicialización, dejamos intacto el contenido del elemento ".instruction"
+  // para que se conserve el mensaje actualizado después de presionar "Comenzar".
   
   // Mostrar u ocultar el banner según el parámetro
   bannerDiv.style.display = showBanner ? "block" : "none";
   
-  // Seleccionar aleatoriamente 5 eventos
-  selectedEvents = shuffle(allEvents.slice()).slice(0, 5);
+  // Seleccionar aleatoriamente 7 eventos
+  selectedEvents = shuffle(allEvents.slice()).slice(0, 7);
   
   // Calcular el orden correcto (ascendente según fecha)
   correctOrder = selectedEvents.slice().sort((a, b) => a.date - b.date).map(e => e.id);
@@ -165,8 +178,8 @@ function initializeGame(showBanner = true) {
     zone.innerHTML = '';
   });
   
-  // Limpiar contenedor de cartas e insertar mensaje de inicio
-  cardsContainer.innerHTML = '<p class="hint">Arrastra las cartas de aquí a la línea de tiempo. Al seleccionar una carta, verás la descripción del evento.</p>';
+  // Limpiar contenedor de cartas (sin mensaje hint)
+  cardsContainer.innerHTML = '';
   
   // Crear las cartas (con descripción en dataset)
   const shuffledCards = shuffle(selectedEvents.slice());
@@ -196,13 +209,12 @@ function initializeGame(showBanner = true) {
     card.appendChild(dateP);
     
     card.addEventListener("dragstart", dragStart);
-    // Agregar eventos táctiles para dispositivos móviles
-    card.addEventListener("touchstart", handleTouchStart, {passive: false});
-    card.addEventListener("touchmove", handleTouchMove, {passive: false});
-    card.addEventListener("touchend", handleTouchEnd);
-    // Al hacer click, agregar clase 'selected' (sombra naranja) y mostrar detalle (solo descripción)
+    // Soporte táctil para móviles
+    card.addEventListener("touchstart", handleTouchStart, { passive: false });
+    card.addEventListener("touchmove", handleTouchMove, { passive: false });
+    card.addEventListener("touchend", handleTouchEnd, { passive: false });
+    // Al hacer click, agregar la clase 'selected' (sombra naranja) y mostrar el detalle (solo descripción)
     card.addEventListener("click", () => {
-      // Remover 'selected' de todas las cartas
       document.querySelectorAll(".card").forEach(c => c.classList.remove("selected"));
       card.classList.add("selected");
       showDetail(card);
@@ -212,7 +224,7 @@ function initializeGame(showBanner = true) {
   });
 }
 
-// Función para mostrar detalle de la carta seleccionada (solo descripción)
+// Función para mostrar detalle (solo descripción) de la carta seleccionada
 function showDetail(card) {
   const description = card.dataset.description;
   detailDescription.textContent = description;
@@ -224,30 +236,32 @@ function dragStart(e) {
   e.dataTransfer.setData("text/plain", e.target.closest(".card").dataset.id);
 }
 
-// Funciones para soporte táctil (touch events)
+// Funciones para soporte táctil en móviles
 function handleTouchStart(e) {
   e.preventDefault();
   const touch = e.touches[0];
-  const rect = e.target.getBoundingClientRect();
-  e.target.dataset.offsetX = touch.clientX - rect.left;
-  e.target.dataset.offsetY = touch.clientY - rect.top;
-  e.target.style.position = "absolute";
-  e.target.style.zIndex = "1000";
+  const target = e.currentTarget;
+  const rect = target.getBoundingClientRect();
+  target.dataset.offsetX = touch.clientX - rect.left;
+  target.dataset.offsetY = touch.clientY - rect.top;
+  target.style.position = "absolute";
+  target.style.zIndex = "1000";
 }
 
 function handleTouchMove(e) {
   e.preventDefault();
   const touch = e.touches[0];
-  const offsetX = parseFloat(e.target.dataset.offsetX);
-  const offsetY = parseFloat(e.target.dataset.offsetY);
-  e.target.style.left = (touch.clientX - offsetX) + "px";
-  e.target.style.top = (touch.clientY - offsetY) + "px";
+  const target = e.currentTarget;
+  const offsetX = parseFloat(target.dataset.offsetX);
+  const offsetY = parseFloat(target.dataset.offsetY);
+  target.style.left = (touch.clientX - offsetX) + "px";
+  target.style.top = (touch.clientY - offsetY) + "px";
 }
 
 function handleTouchEnd(e) {
   e.preventDefault();
-  const card = e.target;
-  const rect = card.getBoundingClientRect();
+  const target = e.currentTarget;
+  const rect = target.getBoundingClientRect();
   const centerX = rect.left + rect.width / 2;
   const centerY = rect.top + rect.height / 2;
   let dropped = false;
@@ -255,17 +269,17 @@ function handleTouchEnd(e) {
     const zoneRect = zone.getBoundingClientRect();
     if (centerX >= zoneRect.left && centerX <= zoneRect.right &&
         centerY >= zoneRect.top && centerY <= zoneRect.bottom) {
-      zone.appendChild(card);
+      zone.appendChild(target);
       dropped = true;
     }
   });
   if (!dropped) {
-    cardsContainer.appendChild(card);
+    cardsContainer.appendChild(target);
   }
-  card.style.position = "";
-  card.style.left = "";
-  card.style.top = "";
-  card.style.zIndex = "";
+  target.style.position = "";
+  target.style.left = "";
+  target.style.top = "";
+  target.style.zIndex = "";
 }
 
 // Funciones para permitir el arrastre sobre una zona (drag over/leave)
@@ -322,9 +336,9 @@ checkButton.addEventListener("click", () => {
   document.querySelectorAll(".dropzone").forEach((zone, index) => {
     if (zone.firstChild) {
       const card = zone.firstChild;
-      card.classList.remove("selected"); // Remover sombra naranja de selección
+      card.classList.remove("selected"); // Elimina la sombra naranja de selección
       if (parseInt(card.dataset.id) === correctOrder[index]) {
-        card.classList.add("correct"); // Sombra verde para acertadas
+        card.classList.add("correct"); // Aplica sombra verde para acertadas
         const dateP = card.querySelector(".date");
         if (dateP) dateP.style.display = "block";
         correctCount++;
@@ -332,10 +346,24 @@ checkButton.addEventListener("click", () => {
     }
   });
   
-  resultDiv.textContent = `Tienes ${correctCount} cartas correctas. Intento ${attemptCount} de ${maxAttempts}.`;
-  
-  if (correctCount === 5) {
+  // Calcular el puntaje según correctCount
+  if (correctCount >= 6) {
     score = 5;
+  } else if (correctCount >= 4) {
+    score = 3;
+  } else if (correctCount === 3) {
+    score = 2;
+  } else if (correctCount >= 1) {
+    score = 1;
+  } else {
+    score = 0;
+  }
+  
+  // Mostrar mensaje usando "punto" o "puntos" basado en el score
+  const puntosTexto = score === 1 ? "punto" : "puntos";
+  resultDiv.textContent = `Tienes ${score} ${puntosTexto}. Intento ${attemptCount} de ${maxAttempts}.`;
+  
+  if (correctCount === selectedEvents.length) {
     resultDiv.textContent = `¡Excelente! Has colocado correctamente todas las cartas. Puntaje: ${score} - ¡Juego excelente!`;
     stopAllAudio();
     audioComplete.play();
@@ -344,14 +372,13 @@ checkButton.addEventListener("click", () => {
     timerDiv.style.display = "none";
     restartButton.style.display = "inline-block";
   } else if (attemptCount >= maxAttempts) {
-    score = correctCount;
     let mensaje = "";
     if (score === 0) {
       mensaje = `¡Has terminado la partida! No lograste ninguna carta correcta. Puntaje: ${score} - ¡Mucho ánimo, prepárate para la próxima ocasión!`;
       stopAllAudio();
       audioCeropuntos.play();
     } else {
-      mensaje = `¡Has terminado la partida! Tienes ${score} cartas correctas. Puntaje: ${score} - ¡Sigue esforzándote!`;
+      mensaje = `¡Has terminado la partida! Tienes ${score} ${puntosTexto}. Puntaje: ${score} - ¡Sigue esforzándote!`;
       stopAllAudio();
       audioIncompleto.play();
     }
@@ -377,7 +404,8 @@ restartButton.addEventListener("click", () => {
 
 // Evento para el botón de Comenzar
 startButton.addEventListener("click", () => {
-  document.querySelector(".instruction").textContent = "Arrastra las cartas de aquí a la línea de tiempo y ¡Adivina el orden de los acontecimientos!";
+  // Actualizar el mensaje de instrucciones debajo del título
+  document.querySelector(".instruction").textContent = "Arrastra las cartas a la línea de tiempo y ordénalas correctamente. Al dar click en una carta, verás una descripción del evento.";
   bannerDiv.style.display = "none"; // Ocultar el banner al comenzar
   initializeGame(false);
   timerDiv.style.display = "block";
